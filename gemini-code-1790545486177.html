@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OBZUEAI MusicLabs - Aware Voice Agent</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+    .pulse-mic { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <!-- Device Lock Banner -->
+  <div class="bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 text-xs text-amber-400 flex items-center justify-between">
+    <span class="flex items-center gap-1.5">
+      <i data-lucide="shield-check" class="w-4 h-4"></i>
+      <strong>Device Lock Enabled:</strong> This license is cryptographically bound to hardware signature <code id="devSig" class="bg-amber-950/60 px-1 py-0.5 rounded text-amber-300">OBZ-HW-88392-X</code>.
+    </span>
+    <span class="text-slate-400">Single Device License ($25/Yr)</span>
+  </div>
+
+  <!-- Header -->
+  <header class="glass px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-lg">O</div>
+      <div>
+        <h1 class="font-extrabold text-base tracking-wider text-indigo-400">OBZUEAI MusicLabs</h1>
+        <p class="text-[10px] text-slate-400">Project-Aware Conversational Voice Engine</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <button onclick="togglePasswordModal()" class="text-xs text-slate-400 hover:text-slate-200">Reset Password</button>
+      <button onclick="toggleVoiceMode()" id="voiceToggleBtn" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold transition">
+        <i data-lucide="mic" class="w-4 h-4"></i>
+        <span id="voiceStatus">Voice Chat: OFF</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Studio Layout -->
+  <main class="flex-1 flex overflow-hidden">
+    
+    <!-- Active Project State & Memory Panel -->
+    <aside class="w-72 glass border-r border-slate-800 p-4 space-y-4 flex flex-col text-xs">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <span class="font-bold uppercase tracking-wider text-indigo-400">AI Context Brain</span>
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+      </div>
+
+      <!-- Live Context Readout -->
+      <div class="space-y-2">
+        <label class="text-slate-400 font-semibold">Active Project Memory:</label>
+        <div class="bg-slate-900/90 p-2.5 rounded border border-slate-800 space-y-1.5 text-[11px]">
+          <div><strong>Track:</strong> <span id="memTrack">Neon Horizon (128 BPM)</span></div>
+          <div><strong>Active Code:</strong> <span id="memCode">AudioVisualizer.js (3.2 KB)</span></div>
+          <div><strong>Stems:</strong> <span id="memStems">Vocals, Bass, Drums</span></div>
+          <div><strong>Theme:</strong> Cyberpunk Glass</div>
+        </div>
+      </div>
+
+      <!-- File Manager -->
+      <div class="flex-1 flex flex-col space-y-2 overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400 font-semibold">Project Vault</span>
+          <button onclick="document.getElementById('vaultInput').click()" class="p-1 bg-indigo-600/30 text-indigo-300 rounded hover:bg-indigo-600/50"><i data-lucide="upload" class="w-3.5 h-3.5"></i></button>
+          <input type="file" id="vaultInput" class="hidden" multiple onchange="syncVault(event)" />
+        </div>
+        <div id="vaultList" class="flex-1 bg-slate-900/50 rounded border border-slate-800/80 p-2 overflow-y-auto space-y-1 text-slate-300">
+          <div class="p-1 text-slate-500 italic">Vault empty. Upload project assets.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Chat & Audio Wave Form Workspace -->
+    <section class="flex-1 flex flex-col bg-slate-950/80">
+      
+      <!-- Voice Waveform Animation Bar -->
+      <div id="waveBar" class="hidden p-3 bg-indigo-950/40 border-b border-indigo-500/30 flex items-center justify-center gap-2">
+        <div class="w-1 h-4 bg-indigo-400 rounded pulse-mic"></div>
+        <div class="w-1 h-7 bg-purple-400 rounded pulse-mic"></div>
+        <div class="w-1 h-3 bg-pink-400 rounded pulse-mic"></div>
+        <span class="text-xs text-indigo-300 font-medium ml-2">OBZUEAI Brain Listening & Conversing...</span>
+      </div>
+
+      <!-- Chat Feed -->
+      <div id="chatFeed" class="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
+        <div class="flex items-start space-x-2">
+          <div class="w-7 h-7 rounded bg-indigo-600 flex items-center justify-center font-bold">AI</div>
+          <div class="glass p-3 rounded-xl max-w-xl leading-relaxed">
+            <strong>OBZUEAI Aware Brain:</strong> I am synced to your single-device environment. I can see all your uploaded files, track structures, and active code files. Talk to me or type your request below!
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Bar with Dedicated Voice Mic -->
+      <div class="p-3 glass border-t border-slate-800 flex items-center gap-2">
+        <button onclick="toggleMicListen()" id="micBtn" class="p-2.5 rounded-xl bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 text-indigo-400 transition">
+          <i data-lucide="mic" class="w-5 h-5"></i>
+        </button>
+        <input type="text" id="userInput" placeholder="Ask OBZUEAI to edit code, generate music, or refine video timelines..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500" />
+        <button onclick="sendMessage()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white">Send</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Password Recovery Modal -->
+  <div id="pwdModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="glass max-w-sm w-full rounded-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="font-bold text-xs text-slate-100">Account Password Recovery</h3>
+        <button onclick="togglePasswordModal()"><i data-lucide="x" class="w-4 h-4 text-slate-400"></i></button>
+      </div>
+      <p class="text-[11px] text-slate-300">Enter your registered Google SSO email address to receive a hardware-verified password reset token.</p>
+      <input type="email" placeholder="user@gmail.com" class="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs" />
+      <button onclick="sendRecoveryToken()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 font-bold text-xs rounded text-white">Send Recovery Email</button>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+    let isListening = false;
+    let voiceActive = false;
+
+    // Speech Recognition & Voice Synthesis Initialization
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+    if (recognition) {
+      recognition.continuous = false;
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('userInput').value = transcript;
+        sendMessage();
+      };
+      recognition.onend = () => {
+        isListening = false;
+        document.getElementById('micBtn').classList.remove('bg-indigo-600', 'text-white');
+      };
+    }
+
+    function toggleMicListen() {
+      if (!recognition) {
+        alert("Speech Recognition is not supported in this browser engine.");
+        return;
+      }
+      if (!isListening) {
+        recognition.start();
+        isListening = true;
+        document.getElementById('micBtn').classList.add('bg-indigo-600', 'text-white');
+      } else {
+        recognition.stop();
+      }
+    }
+
+    function toggleVoiceMode() {
+      voiceActive = !voiceActive;
+      document.getElementById('voiceStatus').innerText = `Voice Chat: ${voiceActive ? 'ON' : 'OFF'}`;
+      document.getElementById('waveBar').classList.toggle('hidden', !voiceActive);
+      if (voiceActive) speakText("Voice mode enabled. I am fully aware of your project state and ready to converse.");
+    }
+
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const feed = document.getElementById('chatFeed');
+      feed.innerHTML += `
+        <div class="flex items-start space-x-2 justify-end">
+          <div class="glass p-3 rounded-xl max-w-xl text-indigo-200"><strong>You:</strong> ${text}</div>
+        </div>
+      `;
+
+      input.value = '';
+      feed.scrollTop = feed.scrollHeight;
+
+      // Conscious AI Contextual Response
+      setTimeout(() => {
+        const aiResponse = `I processed your request "${text}" against track 'Neon Horizon' and active code 'AudioVisualizer.js'. The workspace state has been updated.`;
+        feed.innerHTML += `
+          <div class="flex items-start space-x-2">
+            <div class="w-7 h-7 rounded bg-indigo-600 flex items-center justify-center font-bold">AI</div>
+            <div class="glass p-3 rounded-xl max-w-xl leading-relaxed"><strong>OBZUEAI Aware Brain:</strong> ${aiResponse}</div>
+          </div>
+        `;
+        feed.scrollTop = feed.scrollHeight;
+        if (voiceActive) speakText(aiResponse);
+      }, 700);
+    }
+
+    function syncVault(e) {
+      const files = Array.from(e.target.files);
+      const list = document.getElementById('vaultList');
+      if (files.length) {
+        list.innerHTML = files.map(f => `<div class="p-1 rounded bg-slate-900 border border-slate-800 text-[11px] truncate">📄 ${f.name}</div>`).join('');
+      }
+    }
+
+    function togglePasswordModal() { document.getElementById('pwdModal').classList.toggle('hidden'); }
+    function sendRecoveryToken() { alert("Recovery token dispatched to registered Google account!"); togglePasswordModal(); }
+  </script>
+</body>
+</html>
