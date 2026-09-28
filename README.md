@@ -3,416 +3,315 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OBZUEAI MusicLabs - Suno Style Studio & Community</title>
+  <title>OBZUEAI MusicLabs Studio 2.5 (Flagship Suite)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body { font-family: 'Inter', -apple-system, sans-serif; }
-    .glass { background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    body { font-family: 'Inter', -apple-system, sans-serif; user-select: none; }
+    .glass { background: rgba(18, 18, 24, 0.92); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
     .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
-    .pulse-mic { animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    
+    .mixer-channel {
+      background: linear-gradient(180deg, #23252a 0%, #17181c 100%);
+      border-right: 1px solid #0d0e11;
+      border-left: 1px solid #32353e;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+    .knob {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #4a4d57 0%, #1a1b20 100%);
+      border: 2px solid #0f1013;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .fader-track {
+      width: 6px;
+      background: #090a0c;
+      border: 1px solid #2d3039;
+      box-shadow: inset 0 0 4px #000;
+    }
+    .fader-cap {
+      width: 20px;
+      height: 34px;
+      background: linear-gradient(180deg, #d1d5db 0%, #4b5563 50%, #1f2937 100%);
+      border: 1px solid #000;
+      border-radius: 2px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.9);
+    }
+    .vu-meter-bar {
+      background: linear-gradient(0deg, #22c55e 0%, #eab308 75%, #ef4444 100%);
+    }
+    .m4l-device-card {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid #334155;
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-hidden relative" id="appBody">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-hidden relative" id="appBody" oncontextmenu="handleGlobalContextMenu(event)">
 
-  <!-- Dynamic Background Overlay -->
-  <div id="bgOverlay" class="absolute inset-0 bg-cover bg-center opacity-25 pointer-events-none transition-all duration-500 z-0"></div>
-
-  <!-- Hardware Lock Security Header -->
-  <div class="z-20 bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 text-[11px] text-amber-400 flex items-center justify-between">
-    <span class="flex items-center gap-1.5">
-      <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
-      <strong>Hardware Lock Active:</strong> License cryptographically bound to <code class="bg-amber-950/60 px-1 py-0.5 rounded text-amber-300">OBZ-HW-88392-X</code> (Single-Device Pass $25/Yr).
-    </span>
-    <span class="text-slate-400">Free Daily Tier: <strong id="timerDisplay" class="text-emerald-400 font-mono">06:00:00</strong></span>
+  <!-- TRANSPORT CONTROLS -->
+  <div id="floatingTransport" class="fixed top-14 right-6 z-50 glass rounded-2xl px-4 py-2 flex items-center gap-3 shadow-2xl border border-indigo-500/30 cursor-move">
+    <button onclick="toggleRecord()" id="recBtn" class="w-7 h-7 rounded-full bg-red-600/20 text-red-500 border border-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition">
+      <div class="w-2.5 h-2.5 rounded-full bg-current"></div>
+    </button>
+    <button onclick="transportRewind()" class="text-slate-400 hover:text-white"><i data-lucide="rewind" class="w-4 h-4"></i></button>
+    <button onclick="togglePlay()" id="playBtn" class="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-600/40">
+      <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+    </button>
+    <button onclick="transportFastForward()" class="text-slate-400 hover:text-white"><i data-lucide="fast-forward" class="w-4 h-4"></i></button>
+    <button onclick="toggleMicListen()" id="micBtn" class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-indigo-400 border border-slate-700">
+      <i data-lucide="mic" class="w-4 h-4"></i>
+    </button>
+    <div class="h-5 w-px bg-slate-800"></div>
+    <span id="timecodeDisplay" class="font-mono text-xs text-indigo-300 font-bold">00:00:00</span>
   </div>
 
-  <!-- Main Application Header -->
+  <!-- HEADER -->
   <header class="glass z-20 px-5 py-2.5 flex items-center justify-between border-b border-slate-800">
     <div class="flex items-center space-x-3">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-pink-500 flex items-center justify-center font-black text-lg shadow-lg shadow-indigo-500/30">O</div>
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-pink-500 flex items-center justify-center font-black text-base">O</div>
       <div>
-        <h1 class="font-extrabold text-base tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400">OBZUEAI MusicLabs</h1>
-        <p class="text-[10px] text-slate-400">Full Song, Video, Image & Coding Agent Studio</p>
+        <h1 class="font-extrabold text-sm tracking-wider text-indigo-400">OBZUEAI MusicLabs 2.5</h1>
+        <p class="text-[10px] text-emerald-400">Flagship Suite (Unlocked Dev)</p>
       </div>
     </div>
 
-    <!-- View Tabs: Studio vs Community -->
-    <div class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs">
-      <button onclick="switchTab('studio')" id="tabStudio" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold transition flex items-center gap-1.5">
-        <i data-lucide="music" class="w-3.5 h-3.5"></i>
-        <span>Studio Workspace</span>
-      </button>
-      <button onclick="switchTab('community')" id="tabCommunity" class="px-4 py-1.5 rounded-lg text-slate-400 hover:text-white font-bold transition flex items-center gap-1.5">
-        <i data-lucide="users" class="w-3.5 h-3.5"></i>
-        <span>Community Feed</span>
-      </button>
+    <!-- TABS -->
+    <div class="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+      <button onclick="switchTab('create')" id="tabCreate" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold transition">Suno Create</button>
+      <button onclick="switchTab('studio')" id="tabStudio" class="px-4 py-1.5 rounded-lg text-slate-400 hover:text-white font-bold transition">Studio & Mixer</button>
+      <button onclick="switchTab('devices')" id="tabDevices" class="px-4 py-1.5 rounded-lg text-slate-400 hover:text-white font-bold transition">Max for Live & Synths</button>
+      <button onclick="switchTab('packs')" id="tabPacks" class="px-4 py-1.5 rounded-lg text-slate-400 hover:text-white font-bold transition">GitHub Creative Packs</button>
     </div>
 
-    <!-- User Profile & Settings Drawer Controls -->
     <div class="flex items-center space-x-3">
-      <button onclick="toggleVoiceMode()" id="voiceToggleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition">
-        <i data-lucide="mic" class="w-3.5 h-3.5 text-indigo-400"></i>
-        <span id="voiceStatus">Voice: OFF</span>
+      <button onclick="openLocalDirectory()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+        <i data-lucide="folder-open" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span>Open Drive</span>
       </button>
-
-      <!-- Settings Dropdown Button -->
-      <button onclick="toggleSettingsDrawer()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300">
-        <i data-lucide="sliders" class="w-4 h-4"></i>
-      </button>
-
-      <!-- User Profile Thumbnail -->
-      <div class="flex items-center gap-2 pl-2 border-l border-slate-800">
-        <img id="userAvatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" class="w-8 h-8 rounded-full border border-indigo-500 object-cover cursor-pointer" onclick="toggleProfileModal()" />
-        <button onclick="toggleAuth()" id="authBtn" class="text-xs font-semibold text-slate-300 hover:text-white">Sign In</button>
-      </div>
     </div>
   </header>
 
-  <!-- MAIN VIEW CONTAINER -->
+  <!-- WORKSPACE CONTAINER -->
   <div id="mainContainer" class="flex-1 flex overflow-hidden z-10">
     
-    <!-- STUDIO VIEW (Suno Layout: Left Controls/Lyrics, Top Tracks, Center Chat) -->
-    <div id="viewStudio" class="flex-1 flex overflow-hidden w-full">
-      
-      <!-- LEFT PANEL: Lyrics Preview Pane & Quick Creators -->
-      <aside class="w-80 glass border-r border-slate-800/80 flex flex-col overflow-hidden text-xs">
-        <div class="p-3 border-b border-slate-800 flex items-center justify-between">
-          <span class="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Lyrics & Prompt Editor</span>
-          <button onclick="generateLyricsPrompt()" class="text-[10px] text-indigo-400 hover:underline">Auto-Structure</button>
+    <!-- SYSTEM BROWSER -->
+    <aside class="w-64 glass border-r border-slate-800 flex flex-col text-xs">
+      <div class="p-3 border-b border-slate-800 font-bold text-slate-300 flex items-center justify-between">
+        <span class="flex items-center gap-1.5"><i data-lucide="hard-drive" class="w-4 h-4 text-indigo-400"></i> Local & Repo Browser</span>
+      </div>
+      <div id="fileBrowserTree" class="flex-1 p-2 overflow-y-auto custom-scrollbar space-y-1">
+        <div class="p-1.5 rounded bg-slate-900/60 border border-slate-800 text-indigo-300 cursor-pointer" onclick="switchTab('devices')">🎛️ Max for Live Devices</div>
+        <div class="p-1.5 rounded bg-slate-900/60 border border-slate-800 text-pink-300 cursor-pointer" onclick="switchTab('devices')">🎹 Wavetable, Sampler, Operator</div>
+        <div class="p-1.5 rounded bg-slate-900/60 border border-slate-800 text-amber-300 cursor-pointer" onclick="switchTab('packs')">📦 GitHub Sound Toolkits</div>
+        <div class="p-1.5 rounded bg-slate-900/60 border border-slate-800 text-emerald-300 cursor-pointer" onclick="switchTab('packs')">🎻 GitHub Acoustic Collections</div>
+        <div class="p-1.5 rounded bg-slate-900/60 border border-slate-800 text-slate-300 cursor-pointer">📁 Local Drive & Projects</div>
+      </div>
+    </aside>
+
+    <!-- 1. SUNO CREATE VIEW -->
+    <div id="viewCreate" class="flex-1 flex overflow-hidden">
+      <div class="w-80 glass border-r border-slate-800/80 flex flex-col p-4 space-y-4 overflow-y-auto custom-scrollbar text-xs">
+        <div>
+          <label class="font-bold text-slate-300">Lyrics</label>
+          <textarea id="lyricsInput" rows="7" placeholder="[Verse 1]&#10;Enter lyrics here..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-indigo-200 font-mono text-xs focus:outline-none focus:border-indigo-500 resize-none"></textarea>
         </div>
 
-        <!-- Lyrics Editor Box -->
-        <div class="flex-1 p-3 flex flex-col space-y-2 overflow-y-auto custom-scrollbar">
-          <textarea id="lyricsPane" placeholder="[Verse 1]&#10;Neon lights on the digital street...&#10;&#10;[Chorus]&#10;OBZUEAI takes the beat higher..." class="w-full flex-1 bg-slate-900/90 border border-slate-800 rounded-xl p-3 text-xs text-indigo-200 focus:outline-none focus:border-indigo-500 font-mono leading-relaxed resize-none custom-scrollbar"></textarea>
-          
-          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80 space-y-1 text-[11px]">
-            <div class="text-slate-400 font-bold">Generation Output Mode:</div>
-            <div class="text-emerald-400 font-semibold">✓ 2 Full Songs + 2 Samples + High-Res Cover Art</div>
-          </div>
-        </div>
-      </aside>
-
-      <!-- CENTER AREA: Top Generated Tracks List + Center AI Chat Engine -->
-      <main class="flex-1 flex flex-col bg-slate-950/70 overflow-hidden">
-        
-        <!-- TOP GENERATED TRACKS LIST (Populates above chat) -->
-        <div class="p-3 border-b border-slate-800 bg-slate-900/40">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-              <i data-lucide="disc" class="w-4 h-4 text-purple-400"></i>
-              Generated Songs & Samples Queue
-            </span>
-            <span class="text-[10px] text-slate-400">Auto-created 4 stems on every prompt</span>
-          </div>
-
-          <div id="generatedTracksQueue" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            <div class="text-xs text-slate-500 italic col-span-full py-2 text-center">No tracks generated in this session yet. Issue a command in the chat below!</div>
-          </div>
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">Style of Music</label>
+          <textarea id="styleInput" rows="3" placeholder="hip-hop, orchestral brass, pitch-shifted loops..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 resize-none"></textarea>
         </div>
 
-        <!-- VOICE WAVEFORM ANIMATION BAR -->
-        <div id="waveBar" class="hidden p-2.5 bg-indigo-950/50 border-b border-indigo-500/30 flex items-center justify-center gap-2">
-          <div class="w-1 h-3 bg-indigo-400 rounded pulse-mic"></div>
-          <div class="w-1 h-6 bg-purple-400 rounded pulse-mic"></div>
-          <div class="w-1 h-2 bg-pink-400 rounded pulse-mic"></div>
-          <span class="text-xs text-indigo-300 font-medium ml-2">OBZUEAI Aware Brain Listening & Conversing...</span>
-        </div>
+        <button onclick="triggerSunoCreate()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 font-extrabold text-white text-xs shadow-lg shadow-indigo-600/30">
+          🎵 Generate Full Tracks
+        </button>
+      </div>
 
-        <!-- CENTER CHAT FEED -->
-        <div id="chatFeed" class="flex-1 overflow-y-auto p-4 space-y-3 text-xs custom-scrollbar">
-          <div class="flex items-start space-x-2">
-            <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white">AI</div>
-            <div class="glass p-3 rounded-2xl max-w-xl leading-relaxed text-slate-200">
-              <strong>OBZUEAI Brain:</strong> Welcome to your hardware-locked studio! I am fully aware of your project state. Select a genre or mood from the settings drawer, talk to me via mic, or type below to generate full tracks, videos, and code.
+      <div class="flex-1 p-4 bg-slate-950/80 overflow-y-auto custom-scrollbar">
+        <h3 class="font-bold text-sm text-slate-200 mb-3">Workspace Stems</h3>
+        <div id="sunoWorkspaceList" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- 2. STUDIO DAW & ANALOG MIXER VIEW -->
+    <div id="viewStudio" class="flex-1 flex flex-col overflow-hidden hidden">
+      <div class="h-1/2 bg-slate-950 border-b border-slate-800 flex flex-col overflow-hidden">
+        <div class="p-2 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between text-xs px-4">
+          <span class="font-bold text-indigo-400 flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4"></i> Multitrack Timeline</span>
+        </div>
+        <div id="sequencerTimeline" class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
+          <div class="h-12 bg-slate-900 border border-slate-800 rounded-lg flex items-center px-3 gap-3">
+            <span class="w-24 font-bold text-xs text-slate-300">Wavetable Synth</span>
+            <div class="flex-1 h-8 bg-indigo-950/60 rounded border border-indigo-500/30 relative overflow-hidden flex items-center px-2">
+              <div class="w-3/4 h-full bg-gradient-to-r from-indigo-600/40 to-purple-600/40 rounded border border-indigo-400/50"></div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- BOTTOM CHAT INPUT BAR WITH MIC -->
-        <div class="p-3 glass border-t border-slate-800 flex items-center gap-2">
-          <button onclick="toggleMicListen()" id="micBtn" class="p-2.5 rounded-xl bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 text-indigo-400 transition">
-            <i data-lucide="mic" class="w-5 h-5"></i>
-          </button>
-          <input type="text" id="userInput" placeholder="Generate a synthwave song, video timeline, or web code..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500" />
-          <button onclick="handleSendMessage()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30">
-            Generate
-          </button>
-        </div>
-      </main>
-    </div>
-
-    <!-- COMMUNITY FEED VIEW -->
-    <div id="viewCommunity" class="flex-1 flex overflow-hidden w-full hidden">
-      <!-- Left Community Chat Tab -->
-      <aside class="w-80 glass border-r border-slate-800 flex flex-col text-xs">
-        <div class="p-3 border-b border-slate-800 font-bold text-indigo-400 flex items-center justify-between">
-          <span>Global Community Chat</span>
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-        </div>
-        <div id="communityChatMessages" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-          <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
-            <span class="font-bold text-purple-400">@ProducerJohn:</span> Just dropped a Reggae Dub remix! Check the feed.
+      <div class="h-1/2 bg-[#121316] border-t-2 border-[#2a2d35] flex flex-col overflow-hidden">
+        <div id="mixerConsole" class="flex-1 overflow-x-auto p-3 flex gap-1 custom-scrollbar bg-[#121316]">
+          <div class="w-24 mixer-channel rounded-lg p-2 flex flex-col items-center justify-between border-2 border-amber-600/30">
+            <span class="text-[10px] font-bold text-amber-400 uppercase">MASTER</span>
+            <div class="knob my-1"></div>
+            <div class="fader-cap my-2"></div>
+            <span class="text-[9px] font-mono text-slate-400">0.0 dB</span>
           </div>
         </div>
-        <div class="p-2.5 border-t border-slate-800 flex gap-2">
-          <input type="text" id="communityMsgInput" placeholder="Share a track or chat..." class="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs" />
-          <button onclick="sendCommunityMsg()" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-bold">Post</button>
+      </div>
+    </div>
+
+    <!-- 3. EXCLUSIVE DEVICES & SYNTHS (MAX FOR LIVE, WAVETABLE, SAMPLER, OPERATOR) -->
+    <div id="viewDevices" class="flex-1 p-6 bg-slate-950 overflow-y-auto custom-scrollbar hidden">
+      <div class="max-w-6xl mx-auto space-y-6">
+        <div>
+          <h2 class="text-base font-extrabold text-indigo-400 flex items-center gap-2">
+            <i data-lucide="cpu" class="w-5 h-5"></i> Max for Live Platform
+          </h2>
+          <p class="text-xs text-slate-400">Build, hack, or download custom multi-effects, tools, and venue lighting controllers directly within the browser.</p>
         </div>
-      </aside>
 
-      <!-- Right Community Showcase Grid -->
-      <main class="flex-1 p-6 overflow-y-auto custom-scrollbar bg-slate-950/80">
-        <h2 class="text-base font-extrabold text-slate-100 mb-4 flex items-center gap-2">
-          <i data-lucide="globe" class="w-5 h-5 text-indigo-400"></i>
-          Community Trending Showcase
-        </h2>
-        <div id="communityGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <!-- Community Cards Populated Dynamically -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="m4l-device-card p-4 rounded-xl space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-xs text-indigo-300">PitchLoop89 Pro</span>
+              <span class="text-[10px] bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded">M4L Device</span>
+            </div>
+            <p class="text-[11px] text-slate-400">Glitchy pitch-shifting delay and real-time micro-looping effects device.</p>
+            <button onclick="cloneGithubDevice('PitchLoop89 Pro')" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-bold text-white">Load Device</button>
+          </div>
+
+          <div class="m4l-device-card p-4 rounded-xl space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-xs text-pink-300">Pegasus Multi Synth</span>
+              <span class="text-[10px] bg-pink-900/60 text-pink-300 px-2 py-0.5 rounded">Organic Series</span>
+            </div>
+            <p class="text-[11px] text-slate-400">6-voice organic synthesis engine generating evolving microtonal layers.</p>
+            <button onclick="cloneGithubDevice('Pegasus Multi Synth')" class="w-full py-1.5 bg-pink-600 hover:bg-pink-500 rounded text-xs font-bold text-white">Load Device</button>
+          </div>
+
+          <div class="m4l-device-card p-4 rounded-xl space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-xs text-emerald-300">Beats Maker</span>
+              <span class="text-[10px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">Organic Series</span>
+            </div>
+            <p class="text-[11px] text-slate-400">Generative algorithmic rhythm generator with dynamic velocity randomization.</p>
+            <button onclick="cloneGithubDevice('Beats Maker')" class="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-xs font-bold text-white">Load Device</button>
+          </div>
         </div>
-      </main>
-    </div>
-  </div>
 
-  <!-- SETTINGS & PROFILE DRAWER (Tucked underneath dropdown) -->
-  <div id="settingsDrawer" class="fixed inset-y-0 right-0 w-80 glass z-50 transform translate-x-full transition-transform duration-300 p-5 flex flex-col space-y-4 text-xs border-l border-slate-700">
-    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-      <h3 class="font-bold text-sm text-slate-100">Studio Settings & Profiles</h3>
-      <button onclick="toggleSettingsDrawer()"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button>
-    </div>
+        <div>
+          <h2 class="text-base font-extrabold text-purple-400 flex items-center gap-2 mt-4">
+            <i data-lucide="sliders" class="w-5 h-5"></i> Flagship Synthesizer Engine
+          </h2>
+        </div>
 
-    <div class="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-1">
-      <!-- Global Genre Profile Selection -->
-      <div>
-        <label class="block font-bold text-slate-300 mb-1">Global Genre Profile</label>
-        <select id="genreSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200">
-          <optgroup label="Reggae & Subgenres">
-            <option>Roots Reggae</option><option>Dancehall</option><option>Dub</option><option>Rocksteady</option><option>Ska</option><option>Ragga</option><option>Reggae Fusion</option>
-          </optgroup>
-          <optgroup label="Hip-Hop & Subgenres">
-            <option>Boom Bap</option><option>Trap</option><option>Drill</option><option>Conscious Hip-Hop</option><option>Lo-Fi Hip-Hop</option><option>Phonk</option><option>G-Funk</option><option>Cloud Rap</option>
-          </optgroup>
-          <optgroup label="Global Music">
-            <option>Afrobeats</option><option>Latin Reggaeton</option><option>Amapiano</option><option>K-Pop</option><option>Samba</option><option>Highlife</option><option>Celtic Folk</option>
-          </optgroup>
-        </select>
-      </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="glass p-4 rounded-xl space-y-2 border border-purple-500/30">
+            <h3 class="font-bold text-xs text-purple-300">Wavetable</h3>
+            <p class="text-[11px] text-slate-400">Advanced morphing synthesis with native MPE expression support.</p>
+            <button onclick="cloneGithubDevice('Wavetable Synth')" class="w-full py-1.5 bg-purple-600 hover:bg-purple-500 rounded text-xs font-bold text-white">Unlock via GitHub Repo</button>
+          </div>
 
-      <!-- 30 Song Mood Selector -->
-      <div>
-        <label class="block font-bold text-slate-300 mb-1">Song Mood Profile (30 Moods)</label>
-        <select id="moodSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200">
-          <option>1. Energetic</option><option>2. Melancholic</option><option>3. Chill / Relaxed</option><option>4. Aggressive</option><option>5. Euphoric</option>
-          <option>6. Dark / Mysterious</option><option>7. Romantic</option><option>8. Nostalgic</option><option>9. Uplifting</option><option>10. Dreamy</option>
-          <option>11. Hypnotic</option><option>12. Tense / Suspenseful</option><option>13. Funky</option><option>14. Epic / Cinematic</option><option>15. Rebellious</option>
-          <option>16. Soulful</option><option>17. Trippy</option><option>18. Atmospheric</option><option>19. Playful</option><option>20. Gritty</option>
-          <option>21. Peaceful</option><option>22. Futuristic</option><option>23. Hopeful</option><option>24. Sad</option><option>25. Fierce</option>
-          <option>26. Groovy</option><option>27. Ethereal</option><option>28. Fiery</option><option>29. Smooth</option><option>30. Rowdy</option>
-        </select>
-      </div>
+          <div class="glass p-4 rounded-xl space-y-2 border border-blue-500/30">
+            <h3 class="font-bold text-xs text-blue-300">Sampler</h3>
+            <p class="text-[11px] text-slate-400">Deep multi-sample editing, keyzone mapping, and multi-filter routing.</p>
+            <button onclick="cloneGithubDevice('Sampler Engine')" class="w-full py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-bold text-white">Unlock via GitHub Repo</button>
+          </div>
 
-      <!-- Background Profile Image Upload -->
-      <div>
-        <label class="block font-bold text-slate-300 mb-1">Custom Background Image</label>
-        <input type="file" accept="image/*" onchange="uploadBackground(event)" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-[11px] text-slate-400" />
-      </div>
-
-      <!-- Password Recovery & Device Locking -->
-      <div class="pt-3 border-t border-slate-800 space-y-2">
-        <button onclick="togglePasswordModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 font-semibold">Account Password Recovery</button>
+          <div class="glass p-4 rounded-xl space-y-2 border border-amber-500/30">
+            <h3 class="font-bold text-xs text-amber-300">Operator</h3>
+            <p class="text-[11px] text-slate-400">Classic 4-operator FM sound generator with customizable algorithms.</p>
+            <button onclick="cloneGithubDevice('Operator FM Synth')" class="w-full py-1.5 bg-amber-600 hover:bg-amber-500 rounded text-xs font-bold text-white">Unlock via GitHub Repo</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- PASSWORD RECOVERY MODAL -->
-  <div id="pwdModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="glass max-w-sm w-full rounded-2xl p-5 space-y-4 border border-slate-700">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-        <h3 class="font-bold text-xs text-slate-100">Password Recovery</h3>
-        <button onclick="togglePasswordModal()"><i data-lucide="x" class="w-4 h-4 text-slate-400"></i></button>
+    <!-- 4. GITHUB CREATIVE PACKS & ACOUSTIC COLLECTIONS VIEW -->
+    <div id="viewPacks" class="flex-1 p-6 bg-slate-950 overflow-y-auto custom-scrollbar hidden">
+      <div class="max-w-6xl mx-auto space-y-6">
+        <div>
+          <h2 class="text-base font-extrabold text-amber-400 flex items-center gap-2">
+            <i data-lucide="package" class="w-5 h-5"></i> GitHub Acoustic & Creative Toolkits
+          </h2>
+          <p class="text-xs text-slate-400">Cloned open-source acoustic collections and specialized vocal/ambient soundscapes.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="glass p-4 rounded-xl space-y-2 border border-amber-500/20">
+            <span class="font-bold text-xs text-amber-300 block">Upright Piano Collection</span>
+            <p class="text-[11px] text-slate-400">Deeply sampled felt and vintage upright piano instruments engineered from GitHub repos.</p>
+            <button onclick="cloneGithubDevice('Upright Piano')" class="w-full py-1.5 bg-amber-600 hover:bg-amber-500 rounded text-xs font-bold text-white">Clone Pack</button>
+          </div>
+
+          <div class="glass p-4 rounded-xl space-y-2 border border-amber-500/20">
+            <span class="font-bold text-xs text-amber-300 block">String & Brass Quartets</span>
+            <p class="text-[11px] text-slate-400">Full expressive chamber string quartet and brass ensemble virtual instruments.</p>
+            <button onclick="cloneGithubDevice('String & Brass Quartet')" class="w-full py-1.5 bg-amber-600 hover:bg-amber-500 rounded text-xs font-bold text-white">Clone Pack</button>
+          </div>
+
+          <div class="glass p-4 rounded-xl space-y-2 border border-purple-500/20">
+            <span class="font-bold text-xs text-purple-300 block">Voice Box Vocal Suite</span>
+            <p class="text-[11px] text-slate-400">Targeted sound toolkit for processing, pitching, and tuning vocal tracks.</p>
+            <button onclick="cloneGithubDevice('Voice Box')" class="w-full py-1.5 bg-purple-600 hover:bg-purple-500 rounded text-xs font-bold text-white">Clone Pack</button>
+          </div>
+
+          <div class="glass p-4 rounded-xl space-y-2 border border-blue-500/20">
+            <span class="font-bold text-xs text-blue-300 block">Mood Reel Cinematic Pack</span>
+            <p class="text-[11px] text-slate-400">Atmospheric narrative soundscapes, textural pads, and cinematic sub-bass hits.</p>
+            <button onclick="cloneGithubDevice('Mood Reel')" class="w-full py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-bold text-white">Clone Pack</button>
+          </div>
+
+          <div class="glass p-4 rounded-xl space-y-2 border border-emerald-500/20">
+            <span class="font-bold text-xs text-emerald-300 block">Drone Lab Complex Tones</span>
+            <p class="text-[11px] text-slate-400">Complex, evolving sustained drone generators for ambient film scoring.</p>
+            <button onclick="cloneGithubDevice('Drone Lab')" class="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-xs font-bold text-white">Clone Pack</button>
+          </div>
+        </div>
       </div>
-      <p class="text-[11px] text-slate-300">Enter your registered Google email for a reset token.</p>
-      <input type="email" placeholder="user@gmail.com" class="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-slate-100" />
-      <button onclick="alert('Recovery token dispatched!'); togglePasswordModal();" class="w-full py-2 bg-indigo-600 text-white font-bold text-xs rounded">Send Reset Email</button>
     </div>
   </div>
 
   <script>
     lucide.createIcons();
-    let isListening = false;
-    let voiceActive = false;
-    let currentTab = 'studio';
-
-    // Speech Recognition
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = SpeechRecognition ? new SpeechRecognition() : null;
-
-    if (recognition) {
-      recognition.onresult = (e) => {
-        document.getElementById('userInput').value = e.results[0][0].transcript;
-        handleSendMessage();
-      };
-    }
-
-    function toggleMicListen() {
-      if (!recognition) return alert("Speech recognition not supported in this browser.");
-      if (!isListening) {
-        recognition.start();
-        isListening = true;
-        document.getElementById('micBtn').classList.add('bg-indigo-600', 'text-white');
-      } else {
-        recognition.stop();
-        isListening = false;
-        document.getElementById('micBtn').classList.remove('bg-indigo-600', 'text-white');
-      }
-    }
-
-    function toggleVoiceMode() {
-      voiceActive = !voiceActive;
-      document.getElementById('voiceStatus').innerText = `Voice: ${voiceActive ? 'ON' : 'OFF'}`;
-      document.getElementById('waveBar').classList.toggle('hidden', !voiceActive);
-    }
 
     function switchTab(tab) {
-      currentTab = tab;
+      document.getElementById('viewCreate').classList.toggle('hidden', tab !== 'create');
       document.getElementById('viewStudio').classList.toggle('hidden', tab !== 'studio');
-      document.getElementById('viewCommunity').classList.toggle('hidden', tab !== 'community');
-      document.getElementById('tabStudio').className = tab === 'studio' ? 'px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold transition flex items-center gap-1.5' : 'px-4 py-1.5 rounded-lg text-slate-400 hover:text-white font-bold transition flex items-center gap-1.5';
-      document.getElementById('tabCommunity').className = tab === 'community' ? 'px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold transition flex items-center gap-1.5' : 'px-4 py-1.5 rounded-lg text-slate-400 hover:text-white font-bold transition flex items-center gap-1.5';
+      document.getElementById('viewDevices').classList.toggle('hidden', tab !== 'devices');
+      document.getElementById('viewPacks').classList.toggle('hidden', tab !== 'packs');
+
+      ['tabCreate', 'tabStudio', 'tabDevices', 'tabPacks'].forEach(t => {
+        const btn = document.getElementById(t);
+        const isActive = t.toLowerCase().includes(tab);
+        btn.className = isActive 
+          ? 'px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold transition'
+          : 'px-4 py-1.5 rounded-lg text-slate-400 hover:text-white font-bold transition';
+      });
     }
 
-    function handleSendMessage() {
-      const input = document.getElementById('userInput');
-      const text = input.value.trim();
-      if (!text) return;
+    function cloneGithubDevice(name) {
+      alert(`🎉 Cloned "${name}" from GitHub into your OBZUEAI MusicLabs local device rack!`);
+    }
 
-      const feed = document.getElementById('chatFeed');
-      feed.innerHTML += `
-        <div class="flex items-start space-x-2 justify-end">
-          <div class="glass p-3 rounded-2xl max-w-xl text-indigo-200"><strong>You:</strong> ${text}</div>
+    function triggerSunoCreate() {
+      const lyrics = document.getElementById('lyricsInput').value || "[Instrumental]";
+      const style = document.getElementById('styleInput').value || "synthwave";
+      const list = document.getElementById('sunoWorkspaceList');
+      list.innerHTML = `
+        <div class="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
+          <div>
+            <h4 class="font-bold text-xs text-slate-100">Track Rendered (${style})</h4>
+            <p class="text-[10px] text-indigo-400 font-mono">${lyrics.substring(0, 30)}...</p>
+          </div>
+          <span class="text-[10px] text-emerald-400 font-bold">Ready</span>
         </div>
-      `;
-      input.value = '';
-      feed.scrollTop = feed.scrollHeight;
-
-      // Generate 4 Tracks Automatically
-      setTimeout(() => {
-        const genre = document.getElementById('genreSelect').value;
-        const mood = document.getElementById('moodSelect').value;
-
-        // Populate top tracks queue
-        const queue = document.getElementById('generatedTracksQueue');
-        queue.innerHTML = `
-          <div class="p-2 bg-slate-900 border border-indigo-500/30 rounded-xl flex items-center gap-2">
-            <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100" class="w-10 h-10 rounded-lg object-cover" />
-            <div class="overflow-hidden text-[11px]">
-              <div class="font-bold text-slate-100 truncate">${text} (Full Song 1)</div>
-              <div class="text-indigo-400 text-[10px]">${genre} • ${mood}</div>
-            </div>
-          </div>
-          <div class="p-2 bg-slate-900 border border-indigo-500/30 rounded-xl flex items-center gap-2">
-            <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" class="w-10 h-10 rounded-lg object-cover" />
-            <div class="overflow-hidden text-[11px]">
-              <div class="font-bold text-slate-100 truncate">${text} (Full Song 2)</div>
-              <div class="text-purple-400 text-[10px]">${genre} • ${mood}</div>
-            </div>
-          </div>
-          <div class="p-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center gap-2 opacity-80">
-            <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100" class="w-10 h-10 rounded-lg object-cover" />
-            <div class="overflow-hidden text-[11px]">
-              <div class="font-bold text-slate-200 truncate">${text} (Sample A)</div>
-              <div class="text-slate-400 text-[10px]">0:30 Preview Stem</div>
-            </div>
-          </div>
-          <div class="p-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center gap-2 opacity-80">
-            <img src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=100" class="w-10 h-10 rounded-lg object-cover" />
-            <div class="overflow-hidden text-[11px]">
-              <div class="font-bold text-slate-200 truncate">${text} (Sample B)</div>
-              <div class="text-slate-400 text-[10px]">0:30 Preview Stem</div>
-            </div>
-          </div>
-        `;
-
-        feed.innerHTML += `
-          <div class="flex items-start space-x-2">
-            <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white">AI</div>
-            <div class="glass p-3 rounded-2xl max-w-xl leading-relaxed text-slate-200">
-              <strong>OBZUEAI Brain:</strong> Generated 2 full songs and 2 samples for <em>"${text}"</em> under <strong>${genre}</strong> [${mood}]. High-resolution artwork compiled to top queue!
-            </div>
-          </div>
-        `;
-        feed.scrollTop = feed.scrollHeight;
-      }, 800);
-    }
-
-    function toggleSettingsDrawer() {
-      document.getElementById('settingsDrawer').classList.toggle('translate-x-full');
-    }
-    function togglePasswordModal() {
-      document.getElementById('pwdModal').classList.toggle('hidden');
-    }
-    function uploadBackground(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          document.getElementById('bgOverlay').style.backgroundImage = `url('${evt.target.result}')`;
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-    function generateLyricsPrompt() {
-      document.getElementById('lyricsPane').value = "[Verse 1]\nDigital waves across the screen...\nOBZUEAI powering the dream...\n\n[Chorus]\nFour tracks rendered in the night,\nMusic and code shining bright!";
-    }
-    function sendCommunityMsg() {
-      const input = document.getElementById('communityMsgInput');
-      if (!input.value.trim()) return;
-      document.getElementById('communityChatMessages').innerHTML += `
-        <div class="bg-slate-900 p-2 rounded border border-slate-800">
-          <span class="font-bold text-indigo-400">@You:</span> ${input.value}
-        </div>
-      `;
-      input.value = '';
+      ` + list.innerHTML;
     }
   </script>
 </body>
 </html>
-name: Deploy OBZUEAI MusicLabs to GitHub Pages
-
-on:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
-
-jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Artifacts
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+Update to Studio 2.5 - Max for Live & GitHub Packs
